@@ -8,14 +8,14 @@ on:
 jobs:
   label-issue:
     runs-on: 'ubuntu-latest'
-    if: |-
+    if: always() # |-
       ${{ github.repository == 'google-gemini/gemini-cli' || github.repository == 'google-gemini/maintainers-gemini-cli' }}
     steps:
       - name: 'Generate GitHub App Token'
         id: 'generate_token'
         env:
           APP_ID: '${{ secrets.APP_ID }}'
-        if: |-
+        if: always() # |-
           ${{ env.APP_ID != '' }}
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
         with:

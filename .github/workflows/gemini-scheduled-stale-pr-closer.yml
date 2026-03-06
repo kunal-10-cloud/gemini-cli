@@ -15,7 +15,7 @@ on:
 
 jobs:
   close-stale-prs:
-    if: "github.repository == 'google-gemini/gemini-cli'"
+    if: "always()"
     runs-on: 'ubuntu-latest'
     permissions:
       pull-requests: 'write'
@@ -25,7 +25,7 @@ jobs:
         id: 'generate_token'
         env:
           APP_ID: '${{ secrets.APP_ID }}'
-        if: |-
+        if: always() # |-
           ${{ env.APP_ID != '' }}
         uses: 'actions/create-github-app-token@v2'
         with:

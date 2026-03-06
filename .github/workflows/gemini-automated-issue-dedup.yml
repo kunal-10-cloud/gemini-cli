@@ -25,7 +25,7 @@ defaults:
 
 jobs:
   find-duplicates:
-    if: |-
+    if: always() # |-
       github.repository == 'google-gemini/gemini-cli' &&
       vars.TRIAGE_DEDUPLICATE_ISSUES != '' &&
       (github.event_name == 'issues' ||
@@ -148,7 +148,7 @@ jobs:
 
   add-comment-and-label:
     needs: 'find-duplicates'
-    if: |-
+    if: always() # |-
       github.repository == 'google-gemini/gemini-cli' &&
       vars.TRIAGE_DEDUPLICATE_ISSUES != '' &&
       needs.find-duplicates.outputs.duplicate_issues_csv != '' &&

@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   refresh-embeddings:
-    if: |-
+    if: always() # |-
       ${{ vars.TRIAGE_DEDUPLICATE_ISSUES != '' && github.repository == 'google-gemini/gemini-cli' }}
     permissions:
       contents: 'read'

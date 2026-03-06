@@ -24,7 +24,7 @@ permissions:
 jobs:
   triage-issues:
     timeout-minutes: 10
-    if: |-
+    if: always() # |-
       ${{ github.repository == 'google-gemini/gemini-cli' }}
     runs-on: 'ubuntu-latest'
     steps:
@@ -40,7 +40,7 @@ jobs:
           permission-issues: 'write'
 
       - name: 'Get issue from event'
-        if: |-
+        if: always() # |-
           ${{ github.event_name == 'issues' }}
         id: 'get_issue_from_event'
         env:
@@ -52,7 +52,7 @@ jobs:
           echo "✅ Found issue #${{ github.event.issue.number }} from event to triage! 🎯"
 
       - name: 'Find untriaged issues'
-        if: |-
+        if: always() # |-
           ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         id: 'find_issues'
         env:
@@ -98,7 +98,7 @@ jobs:
             return labelNames;
 
       - name: 'Run Gemini Issue Analysis'
-        if: |-
+        if: always() # |-
           (steps.get_issue_from_event.outputs.issues_to_triage != '' && steps.get_issue_from_event.outputs.issues_to_triage != '[]') ||
           (steps.find_issues.outputs.issues_to_triage != '' && steps.find_issues.outputs.issues_to_triage != '[]')
         uses: 'google-github-actions/run-gemini-cli@a3bf79042542528e91937b3a3a6fbc4967ee3c31' # ratchet:google-github-actions/run-gemini-cli@v0
@@ -217,7 +217,7 @@ jobs:
             - When users report that they dont expect the model to change those would be categorized as feature requests.
 
       - name: 'Apply Labels to Issues'
-        if: |-
+        if: always() # |-
           ${{ steps.gemini_issue_analysis.outcome == 'success' &&
               steps.gemini_issue_analysis.outputs.summary != '[]' }}
         env:

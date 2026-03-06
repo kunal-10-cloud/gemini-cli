@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   self-assign-issue:
-    if: |-
+    if: always() # |-
       github.repository == 'google-gemini/gemini-cli' &&
       github.event_name == 'issue_comment' &&
       (contains(github.event.comment.body, '/assign') || contains(github.event.comment.body, '/unassign'))

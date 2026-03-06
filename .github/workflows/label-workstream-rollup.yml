@@ -9,7 +9,7 @@ on:
 
 jobs:
   labeler:
-    if: "github.repository == 'google-gemini/gemini-cli'"
+    if: "always()"
     runs-on: 'ubuntu-latest'
     permissions:
       issues: 'write'

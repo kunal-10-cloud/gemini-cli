@@ -39,7 +39,7 @@ permissions:
 
 jobs:
   triage-issue:
-    if: |-
+    if: always() # |-
       (github.repository == 'google-gemini/gemini-cli' || github.repository == 'google-gemini/maintainers-gemini-cli') &&
       (
         github.event_name == 'workflow_dispatch' ||
@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: 'Get issue data for manual trigger'
         id: 'get_issue_data'
-        if: |-
+        if: always() # |-
           github.event_name == 'workflow_dispatch'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
         with:
@@ -75,7 +75,7 @@ jobs:
             return issue;
 
       - name: 'Manual Trigger Pre-flight Checks'
-        if: |-
+        if: always() # |-
           github.event_name == 'workflow_dispatch'
         env:
           ISSUE_NUMBER_INPUT: '${{ github.event.inputs.issue_number || inputs.issue_number }}'
@@ -95,7 +95,7 @@ jobs:
         id: 'generate_token'
         env:
           APP_ID: '${{ secrets.APP_ID }}'
-        if: |-
+        if: always() # |-
           ${{ env.APP_ID != '' }}
         uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
         with:
@@ -268,7 +268,7 @@ jobs:
             - Description: Issues that do not clearly fit into any other defined area/ category, or where information is too limited to make a determination. Use this when no other area is appropriate.
 
       - name: 'Apply Labels to Issue'
-        if: |-
+        if: always() # |-
           ${{ steps.gemini_issue_analysis.outputs.summary != '' }}
         env:
           REPOSITORY: '${{ github.repository }}'
@@ -332,7 +332,7 @@ jobs:
             core.info(`Successfully added labels for #${issueNumber}: ${labelsToAdd.join(', ')}`);
 
       - name: 'Post Issue Analysis Failure Comment'
-        if: |-
+        if: always() # |-
           ${{ failure() && steps.gemini_issue_analysis.outcome == 'failure' }}
         env:
           ISSUE_NUMBER: '${{ github.event.issue.number || github.event.inputs.issue_number }}'
