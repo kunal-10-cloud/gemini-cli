@@ -30,6 +30,22 @@ import {
 import type { MessageBus } from '../../confirmation-bus/message-bus.js';
 import type { BrowserManager, McpToolCallResult } from './browserManager.js';
 import { debugLogger } from '../../utils/debugLogger.js';
+import {
+  generateClickAnimationScript,
+  generateClickAnimationByUidScript,
+  generateScrollAnimationScript,
+} from './cursorAnimations.js';
+
+/** Map of key names to scroll directions for scroll animation detection. */
+const SCROLL_KEY_DIRECTIONS: Record<string, 'up' | 'down'> = {
+  ArrowDown: 'down',
+  ArrowUp: 'up',
+  PageDown: 'down',
+  PageUp: 'up',
+  Space: 'down',
+  End: 'down',
+  Home: 'up',
+};
 
 /**
  * Tool invocation that dispatches to BrowserManager's isolated MCP client.
@@ -97,6 +113,10 @@ class McpToolInvocation extends BaseToolInvocation<
           .join('\n');
       }
 
+      if (!result.isError && !signal.aborted) {
+        await this.injectPostCallAnimationIfApplicable(signal);
+      }
+
       // Post-process to add contextual hints for common error patterns
       const processedContent = postProcessToolResult(
         this.toolName,
@@ -131,6 +151,83 @@ class McpToolInvocation extends BaseToolInvocation<
         error: { message: errorMsg },
       };
     }
+  }
+
+  /**
+   * Injects post-call animations for click, click_at, and scroll keys.
+   */
+  private async injectPostCallAnimationIfApplicable(
+    signal: AbortSignal,
+  ): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const config = this.browserManager.getConfig().getBrowserAgentConfig();
+    if (
+      config.customConfig.headless ||
+      !config.customConfig.showCursorAnimations
+    ) {
+      return;
+    }
+
+    try {
+      if (this.toolName === 'click') {
+        const uid = this.params['uid'];
+        if (uid != null) {
+          const script = generateClickAnimationByUidScript(String(uid));
+          await this.browserManager.callTool(
+            'evaluate_script',
+            { function: script },
+            signal,
+          );
+        }
+      } else if (this.toolName === 'click_at') {
+        const [x, y] =
+          this.params['x'] != null && this.params['y'] != null
+            ? [Number(this.params['x']), Number(this.params['y'])]
+            : Array.isArray(this.params['coordinate'])
+              ? [
+                  Number(this.params['coordinate'][0]),
+                  Number(this.params['coordinate'][1]),
+                ]
+              : [undefined, undefined];
+
+        if (x !== undefined && y !== undefined && !isNaN(x) && !isNaN(y)) {
+          await this.injectClickAnimation(x, y, signal);
+        }
+      } else if (this.toolName === 'press_key') {
+        const key = String(this.params['key']);
+        const direction = SCROLL_KEY_DIRECTIONS[key];
+        if (direction) {
+          await this.injectScrollAnimation(direction, signal);
+        }
+      }
+    } catch (error) {
+      debugLogger.warn(`Failed to inject cursor animation: ${error}`);
+    }
+  }
+
+  private async injectClickAnimation(
+    x: number,
+    y: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const script = generateClickAnimationScript(x, y);
+    await this.browserManager.callTool(
+      'evaluate_script',
+      { function: script },
+      signal,
+    );
+  }
+
+  private async injectScrollAnimation(
+    direction: 'up' | 'down',
+    signal: AbortSignal,
+  ): Promise<void> {
+    const script = generateScrollAnimationScript(direction);
+    await this.browserManager.callTool(
+      'evaluate_script',
+      { function: script },
+      signal,
+    );
   }
 }
 

@@ -49,6 +49,14 @@ describe('mcpToolWrapper', () => {
       callTool: vi.fn().mockResolvedValue({
         content: [{ type: 'text', text: 'Tool result' }],
       } as McpToolCallResult),
+      getConfig: vi.fn().mockReturnValue({
+        getBrowserAgentConfig: () => ({
+          customConfig: {
+            headless: false,
+            showCursorAnimations: true,
+          },
+        }),
+      }),
     } as unknown as BrowserManager;
 
     // Setup mock message bus
@@ -191,6 +199,82 @@ describe('mcpToolWrapper', () => {
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toBe('Connection lost');
+    });
+    it('should inject animation for click by uid', async () => {
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+      );
+
+      const invocation = tools[1].build({ uid: 'elem-123' });
+      await invocation.execute(new AbortController().signal);
+
+      expect(mockBrowserManager.callTool).toHaveBeenCalledWith(
+        'click',
+        {
+          uid: 'elem-123',
+        },
+        expect.any(AbortSignal),
+      );
+
+      expect(mockBrowserManager.callTool).toHaveBeenCalledWith(
+        'evaluate_script',
+        expect.objectContaining({
+          function: expect.stringContaining('[data-uid="elem-123"]'),
+        }),
+        expect.any(AbortSignal),
+      );
+    });
+
+    it('should not inject animation when tool returns error', async () => {
+      vi.mocked(mockBrowserManager.callTool).mockResolvedValue({
+        content: [{ type: 'text', text: 'Element not found' }],
+        isError: true,
+      } as McpToolCallResult);
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+      );
+
+      const invocation = tools[1].build({ uid: 'invalid' });
+      await invocation.execute(new AbortController().signal);
+
+      // Should NOT have called evaluate_script for animation
+      expect(mockBrowserManager.callTool).not.toHaveBeenCalledWith(
+        'evaluate_script',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('should not inject animation in headless mode', async () => {
+      (
+        mockBrowserManager as unknown as { getConfig: ReturnType<typeof vi.fn> }
+      ).getConfig.mockReturnValue({
+        getBrowserAgentConfig: () => ({
+          customConfig: {
+            headless: true,
+            showCursorAnimations: true,
+          },
+        }),
+      });
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+      );
+
+      const invocation = tools[1].build({ uid: 'elem-123' });
+      await invocation.execute(new AbortController().signal);
+
+      // Should call click but NOT evaluate_script
+      expect(mockBrowserManager.callTool).toHaveBeenCalledTimes(1);
+      expect(mockBrowserManager.callTool).toHaveBeenCalledWith(
+        'click',
+        { uid: 'elem-123' },
+        expect.any(AbortSignal),
+      );
     });
   });
 });

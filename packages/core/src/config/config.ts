@@ -315,6 +315,8 @@ export interface BrowserAgentCustomConfig {
   profilePath?: string;
   /** Model override for the visual agent. */
   visualModel?: string;
+  /** Show visual cursor animations for clicks and scrolls. Default: true in non-headless mode */
+  showCursorAnimations?: boolean;
 }
 
 /**
