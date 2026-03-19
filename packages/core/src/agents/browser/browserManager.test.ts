@@ -48,7 +48,7 @@ vi.mock('../../telemetry/metrics.js', () => ({
   recordBrowserAgentConnection: vi.fn(),
 }));
 
-// Mock browser consent to always grant consent by default
+// Mock browser consent to always grant consent by default run ci
 vi.mock('../../../utils/browserConsent.js', () => ({
   getBrowserConsentIfNeeded: vi.fn().mockResolvedValue(true),
 }));
