@@ -293,4 +293,180 @@ describe('mcpToolWrapper', () => {
       expect(mockBrowserManager.callTool).toHaveBeenCalledTimes(3);
     });
   });
+
+  describe('Cursor animations', () => {
+    it('should inject click_at animation after successful click_at', async () => {
+      // Mock: first call is click_at itself, second is evaluate_script for animation
+      vi.mocked(mockBrowserManager.callTool)
+        .mockResolvedValueOnce({
+          content: [{ type: 'text', text: 'Clicked' }],
+        } as McpToolCallResult)
+        .mockResolvedValueOnce({
+          content: [{ type: 'text', text: 'animation-injected' }],
+        } as McpToolCallResult);
+
+      // Add click_at to mock tools
+      const mockToolsWithClickAt = [
+        ...mockMcpTools,
+        {
+          name: 'click_at',
+          description: 'Click at coordinates',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              x: { type: 'number' },
+              y: { type: 'number' },
+            },
+            required: ['x', 'y'],
+          },
+        },
+      ];
+      vi.mocked(mockBrowserManager.getDiscoveredTools).mockResolvedValue(
+        mockToolsWithClickAt,
+      );
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+        false,
+        true, // showCursorAnimations
+      );
+
+      const clickAtTool = tools.find((t) => t.name === 'click_at')!;
+      const invocation = clickAtTool.build({ x: 100, y: 200 });
+      await invocation.execute(new AbortController().signal);
+
+      // Allow async post-animation to fire
+      await new Promise((r) => setTimeout(r, 50));
+
+      // Should have called evaluate_script for animation after click_at
+      const evaluateCalls = vi
+        .mocked(mockBrowserManager.callTool)
+        .mock.calls.filter((c) => c[0] === 'evaluate_script');
+      expect(evaluateCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should inject pre-click listener before click(uid)', async () => {
+      vi.mocked(mockBrowserManager.callTool).mockResolvedValue({
+        content: [{ type: 'text', text: 'OK' }],
+      } as McpToolCallResult);
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+        false,
+        true, // showCursorAnimations
+      );
+
+      const clickTool = tools.find((t) => t.name === 'click')!;
+      const invocation = clickTool.build({ uid: 'elem-99' });
+      await invocation.execute(new AbortController().signal);
+
+      // First call should be evaluate_script (pre-click listener), second is click
+      expect(mockBrowserManager.callTool).toHaveBeenNthCalledWith(
+        1,
+        'evaluate_script',
+        expect.objectContaining({
+          function: expect.stringContaining('addEventListener'),
+        }),
+      );
+      expect(mockBrowserManager.callTool).toHaveBeenNthCalledWith(
+        2,
+        'click',
+        { uid: 'elem-99' },
+        expect.any(AbortSignal),
+      );
+    });
+
+    it('should inject scroll animation for press_key with ArrowDown', async () => {
+      // Add press_key to mock tools
+      const mockToolsWithPressKey = [
+        ...mockMcpTools,
+        {
+          name: 'press_key',
+          description: 'Press a key',
+          inputSchema: {
+            type: 'object' as const,
+            properties: {
+              key: { type: 'string' },
+            },
+            required: ['key'],
+          },
+        },
+      ];
+      vi.mocked(mockBrowserManager.getDiscoveredTools).mockResolvedValue(
+        mockToolsWithPressKey,
+      );
+      vi.mocked(mockBrowserManager.callTool).mockResolvedValue({
+        content: [{ type: 'text', text: 'Key pressed' }],
+      } as McpToolCallResult);
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+        false,
+        true, // showCursorAnimations
+      );
+
+      const pressKeyTool = tools.find((t) => t.name === 'press_key')!;
+      const invocation = pressKeyTool.build({ key: 'ArrowDown' });
+      await invocation.execute(new AbortController().signal);
+
+      // Allow async post-animation to fire
+      await new Promise((r) => setTimeout(r, 50));
+
+      const evaluateCalls = vi
+        .mocked(mockBrowserManager.callTool)
+        .mock.calls.filter((c) => c[0] === 'evaluate_script');
+      expect(evaluateCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should NOT inject animations when showCursorAnimations is false', async () => {
+      vi.mocked(mockBrowserManager.callTool).mockResolvedValue({
+        content: [{ type: 'text', text: 'OK' }],
+      } as McpToolCallResult);
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+        false,
+        false, // showCursorAnimations disabled
+      );
+
+      const clickTool = tools.find((t) => t.name === 'click')!;
+      const invocation = clickTool.build({ uid: 'elem-42' });
+      await invocation.execute(new AbortController().signal);
+
+      // Should only have the click call — no evaluate_script for animation
+      expect(mockBrowserManager.callTool).toHaveBeenCalledTimes(1);
+      expect(mockBrowserManager.callTool).toHaveBeenCalledWith(
+        'click',
+        { uid: 'elem-42' },
+        expect.any(AbortSignal),
+      );
+    });
+
+    it('should still succeed when pre-click listener injection fails', async () => {
+      vi.mocked(mockBrowserManager.callTool)
+        .mockRejectedValueOnce(new Error('Script injection failed')) // pre-click fails
+        .mockResolvedValueOnce({
+          content: [{ type: 'text', text: 'Clicked' }],
+        } as McpToolCallResult); // click succeeds
+
+      const tools = await createMcpDeclarativeTools(
+        mockBrowserManager,
+        mockMessageBus,
+        false,
+        true, // showCursorAnimations
+      );
+
+      const clickTool = tools.find((t) => t.name === 'click')!;
+      const invocation = clickTool.build({ uid: 'elem-42' });
+      const result = await invocation.execute(new AbortController().signal);
+
+      // Tool should still succeed even though animation injection failed
+      expect(result.error).toBeUndefined();
+      expect(result.llmContent).toBe('Clicked');
+    });
+  });
 });

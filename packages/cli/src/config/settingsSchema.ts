@@ -1127,6 +1127,16 @@ const SETTINGS_SCHEMA = {
               'Disable user input on browser window during automation.',
             showInDialog: false,
           },
+          showCursorAnimations: {
+            type: 'boolean',
+            label: 'Show Cursor Animations',
+            category: 'Advanced',
+            requiresRestart: false,
+            default: true,
+            description:
+              'Show visual cursor animations for clicks and scrolls during browser automation.',
+            showInDialog: true,
+          },
         },
       },
     },

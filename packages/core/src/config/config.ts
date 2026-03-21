@@ -318,6 +318,8 @@ export interface BrowserAgentCustomConfig {
   visualModel?: string;
   /** Disable user input on the browser window during automation. Default: true in non-headless mode */
   disableUserInput?: boolean;
+  /** Show visual cursor animations for clicks and scrolls. Default: true in non-headless mode */
+  showCursorAnimations?: boolean;
 }
 
 /**
