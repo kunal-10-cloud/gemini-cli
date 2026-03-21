@@ -72,8 +72,12 @@ export async function createBrowserAgentDefinition(
 
   // Determine if input blocker should be active (non-headless + enabled)
   const shouldDisableInput = config.shouldDisableBrowserUserInput();
-  // Inject automation overlay and input blocker if not in headless mode
   const browserConfig = config.getBrowserAgentConfig();
+  // Determine if cursor animations should be shown (non-headless + not opted out)
+  const showCursorAnimations =
+    !browserConfig?.customConfig?.headless &&
+    (browserConfig?.customConfig?.showCursorAnimations ?? true);
+  // Inject automation overlay and input blocker if not in headless mode
   if (!browserConfig?.customConfig?.headless) {
     if (printOutput) {
       printOutput('Injecting automation overlay...');
@@ -94,6 +98,7 @@ export async function createBrowserAgentDefinition(
     messageBus,
     shouldDisableInput,
     browserConfig.customConfig.blockFileUploads,
+    showCursorAnimations,
   );
   const availableToolNames = mcpTools.map((t) => t.name);
 
